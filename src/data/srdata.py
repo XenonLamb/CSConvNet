@@ -18,6 +18,7 @@ import torch.utils.data as data
 import skimage.color as sc
 import scipy.io
 from data.utils.utils import *
+from compute_grads_cuda import raisr_compute_grads_cuda
 
 @nb.jit(nopython=True)
 def rgb2yuv(rgb):
@@ -27,6 +28,8 @@ def rgb2yuv(rgb):
     out[:, :, 2] = 0.5 * rgb[:, :, 0] - 0.4187 * rgb[:, :, 1] - 0.0813 * rgb[:, :, 2] + 0.5
     return out
 
+
+#gradient statistics computation without CUDA implementation, deprecated
 @nb.jit(nopython=True)
 def hash_table(patchX, patchY, weight, Qangle, Qstrength, Qcoherence, stre, cohe):
     assert (len(stre) == Qstrength- 1) and (len(cohe) == Qcoherence - 1), "Quantization number should be equal"
@@ -61,7 +64,7 @@ def hash_table(patchX, patchY, weight, Qangle, Qstrength, Qcoherence, stre, cohe
 
 
 
-## for real noises, please ignore
+## for real noises simulation, please ignore
 def load_CRF():
     CRF = scipy.io.loadmat('matdata/201_CRF_data.mat')
     iCRF = scipy.io.loadmat('matdata/dorfCurvesInv.mat')
@@ -100,6 +103,10 @@ class SRData(data.Dataset):
         self._set_filesystem(args.dir_data)
         npys = np.load('./trans_prob.npz')
         self.trans_prob = npys['probs']
+        if args.cpu:
+            self.device = torch.device('cpu')
+        else:
+            self.device = torch.device('cuda')
         if args.ext.find('img') < 0:
             path_bin = os.path.join(self.apath, 'bin')
             os.makedirs(path_bin, exist_ok=True)
@@ -288,7 +295,8 @@ class SRData(data.Dataset):
             if (f3 is not None) and (not os.path.isfile(f3)):
                 print("computing raisr stats", f3)
                 _img = imageio.imread(img)
-                grads = self._compute_grads(_img)
+                #grads = self._compute_grads(_img)
+                grads = raisr_compute_grads_cuda(_img, self.h_hsize, device=self.device)
                 np.savez(
                     f3,
                     grads=grads)
@@ -377,6 +385,7 @@ class SRData(data.Dataset):
 
         return masks, masks_bin
 
+    #without CUDA, deprecated
     def _compute_grads(self, _img, step=1):
         lr = (sc.rgb2ycbcr(_img).astype(np.float32) / 255.)[:, :, 0]
         #lr = gaussian_filter(lr, sigma=0.8)
@@ -398,6 +407,7 @@ class SRData(data.Dataset):
 
         return grads
 
+    # without CUDA, deprecated
     def grad_patch(self, patch_x, patch_y):
         gx = patch_x.ravel()
         gy = patch_y.ravel()
@@ -541,17 +551,17 @@ class SRData(data.Dataset):
             pair = (lr,hr,mask)
         if self.args.debug:
             print(pair[0].shape,pair[1].shape, pair[2].shape)
-        if self.args.real_isp or self.args.use_real:
-            if not (self.name in ['SIDD','SIDDVAL','NAM']):
-                lr, noisemap = AddRealNoise((hr.astype(np.float32))/255., self.CRF_para, self.iCRF_para, self.I_gl, self.B_gl, self.I_inv_gl, self.B_inv_gl)
-                lr = lr * 255.
-            else:
-                if self.args.model == 'unet_noisemap':
-                    _, noisemap = AddRealNoise(hr, self.CRF_para, self.iCRF_para, self.I_gl, self.B_gl, self.I_inv_gl, self.B_inv_gl)
-            if self.args.real_isp:
-                mask = np.concatenate((mask,noisemap),axis=-1)
-            if self.args.debug:
-                print('noisemap and concatenate shape: ', noisemap.shape, noisemap.dtype, mask.shape, mask.dtype)
+        #if self.args.real_isp or self.args.use_real:
+        #    if not (self.name in ['SIDD','SIDDVAL','NAM']):
+        #        lr, noisemap = AddRealNoise((hr.astype(np.float32))/255., self.CRF_para, self.iCRF_para, self.I_gl, self.B_gl, self.I_inv_gl, self.B_inv_gl)
+        #        lr = lr * 255.
+        #    else:
+        #        if self.args.model == 'unet_noisemap':
+        #            _, noisemap = AddRealNoise(hr, self.CRF_para, self.iCRF_para, self.I_gl, self.B_gl, self.I_inv_gl, self.B_inv_gl)
+        #    if self.args.real_isp:
+        #        mask = np.concatenate((mask,noisemap),axis=-1)
+        #    if self.args.debug:
+        #        print('noisemap and concatenate shape: ', noisemap.shape, noisemap.dtype, mask.shape, mask.dtype)
         pair = (lr,hr,mask)
 
         pair = common.set_channel(*pair, n_channels=self.args.n_colors)

@@ -113,7 +113,7 @@ class Loss(nn.modules.loss._Loss):
         return ''.join(log)
 
     def plot_loss(self, apath, epoch):
-        axis = np.linspace(1, epoch+1, epoch+1)
+        axis = np.linspace(1, epoch, epoch)
         for i, l in enumerate(self.loss):
             label = '{} Loss'.format(l['type'])
             fig = plt.figure()

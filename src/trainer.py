@@ -191,6 +191,11 @@ class Trainer():
     """
 
     def merge_grads(self,grads_tensor):
+        """
+
+        :param grads_tensor: of shape (H,W,3)
+        :return:
+        """
         if self.args.Qstr ==2:
             stre = np.array([0.05],dtype=np.float32)
         else:
@@ -217,6 +222,8 @@ class Trainer():
 
 
         return grad_map
+
+
     def stride_cut(self,lr,hr,mask=None, split_size=400, overlap_size=100):
         if self.args.debug:
             print('stride cutting the following tensors: ')
