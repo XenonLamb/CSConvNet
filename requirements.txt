@@ -1,0 +1,10 @@
+opencv-python
+sklearn-image
+streamlit
+altair
+tensforflow-gpu=1.12.2
+Pillows
+yacs
+PyYAML
+tensorboardX
+
