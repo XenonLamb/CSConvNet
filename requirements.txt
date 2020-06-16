@@ -2,9 +2,16 @@ opencv-python
 sklearn-image
 streamlit
 altair
-tensforflow-gpu=1.12.2
-Pillows
+tensforflow-gpu==1.14.0
+Pillow
+bs4
+h5py
 yacs
 PyYAML
 tensorboardX
+tqdm
+sklearn
+requests
+
+
 
